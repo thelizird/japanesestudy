@@ -33,7 +33,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
   const [quizType, setQuizType] = useState<QuizType | null>(null)
 
   // character selector state
-  const [introducedChars, setIntroducedChars] = useState<Character[]>([])
+  const [availableChars, setAvailableChars] = useState<Character[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [loadingChars, setLoadingChars] = useState(false)
   const dragMode = useRef<'select' | 'deselect' | null>(null)
@@ -46,28 +46,23 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
 
   const deckLabel = deck.charAt(0).toUpperCase() + deck.slice(1)
 
-  // Load introduced characters when entering select phase
+  // Load all characters when entering select phase
   const enterSelect = useCallback(async (type: QuizType) => {
     setQuizType(type)
     setSelectedIds(new Set())
     setLoadingChars(true)
-    const progress = await api.getProgress(deck)
-    const chars = progress
-      .filter(p => p.introduced && p.quiz_type === type)
-      .map(p => p.character)
-    // dedupe by id (3 progress rows share the same character)
-    const seen = new Set<number>()
-    const unique = chars.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true })
-    setIntroducedChars(unique)
+    const chars = await api.getCharacters(deck)
+    setAvailableChars(chars)
     setLoadingChars(false)
     setPhase('select')
   }, [deck])
 
   const startSession = useCallback(async (type: QuizType, charIds: Set<number>) => {
     setLoadingSession(true)
+    for (const id of charIds) await api.introduce(id)
     const progress = await api.getProgress(deck)
     const cards = progress.filter(p =>
-      p.introduced && p.quiz_type === type && charIds.has(p.character.id)
+      p.quiz_type === type && charIds.has(p.character.id)
     )
     setQueue(shuffle(cards))
     setStats({ seen: 0, correct: 0 })
@@ -153,7 +148,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
             <span className="text-white font-semibold">{deckLabel} · Practice</span>
             <div className="w-10" />
           </div>
-          <p className="text-gray-400 text-sm mb-6">Choose a quiz type to drill your introduced characters.</p>
+          <p className="text-gray-400 text-sm mb-6">Choose a quiz type, then pick any characters to drill.</p>
           <div className="space-y-3">
             {QUIZ_OPTIONS.map(opt => (
               <button
@@ -172,7 +167,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
   }
 
   if (phase === 'select') {
-    const allSelected = introducedChars.length > 0 && selectedIds.size === introducedChars.length
+    const allSelected = availableChars.length > 0 && selectedIds.size === availableChars.length
     return (
       <div
         className="min-h-screen bg-[#0f0f14] p-4 select-none"
@@ -185,7 +180,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
             </button>
             <span className="text-white font-semibold">Pick characters</span>
             <button
-              onClick={() => setSelectedIds(allSelected ? new Set() : new Set(introducedChars.map(c => c.id)))}
+              onClick={() => setSelectedIds(allSelected ? new Set() : new Set(availableChars.map(c => c.id)))}
               className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
             >
               {allSelected ? 'Clear all' : 'All'}
@@ -193,7 +188,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
           </div>
 
           <div className="grid grid-cols-5 gap-2 mb-24">
-            {introducedChars.map(char => {
+            {availableChars.map(char => {
               const selected = selectedIds.has(char.id)
               return (
                 <div
