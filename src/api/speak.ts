@@ -17,6 +17,20 @@ export function setVoice(voiceId: string) {
   localStorage.setItem(VOICE_KEY, voiceId)
 }
 
+const DRIVE_TIMER_KEY = 'drive_timer_s'
+export const DRIVE_TIMER_DEFAULT = 5
+export const DRIVE_TIMER_MIN = 5
+export const DRIVE_TIMER_MAX = 10
+
+export function getDriveTimer(): number {
+  const v = parseInt(localStorage.getItem(DRIVE_TIMER_KEY) ?? '')
+  return isNaN(v) ? DRIVE_TIMER_DEFAULT : Math.min(DRIVE_TIMER_MAX, Math.max(DRIVE_TIMER_MIN, v))
+}
+
+export function setDriveTimer(seconds: number) {
+  localStorage.setItem(DRIVE_TIMER_KEY, String(seconds))
+}
+
 let currentAudio: HTMLAudioElement | null = null
 
 function toKatakana(text: string): string {

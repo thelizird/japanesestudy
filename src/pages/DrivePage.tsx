@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Character } from '../api/client'
 import { api } from '../api/client'
-import { preloadDriveAudio, speakDrive } from '../api/speak'
+import { preloadDriveAudio, speakDrive, getDriveTimer } from '../api/speak'
 import { CHARACTERS } from '../data/characters'
 
 interface Props {
@@ -12,7 +12,6 @@ interface Props {
 
 type Phase = 'session' | 'replaying' | 'end' | 'learn'
 
-const SESSION_MS = 5000
 const LEARN_INTERVAL_MS = 10000
 
 function shuffle<T>(arr: T[]): T[] {
@@ -25,6 +24,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
+  const [SESSION_MS] = useState(() => getDriveTimer() * 1000)
   const [charSet, setCharSet] = useState<Character[]>(initChars)
   const [queue, setQueue] = useState<Character[]>(() => shuffle([...initChars]))
   const [phase, setPhase] = useState<Phase>('session')

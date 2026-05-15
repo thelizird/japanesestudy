@@ -1,5 +1,8 @@
 import { useState } from 'react'
-import { JP_VOICES, getVoice, setVoice/*, speak*/ } from '../api/speak'
+import {
+  JP_VOICES, getVoice, setVoice,
+  getDriveTimer, setDriveTimer, DRIVE_TIMER_MIN, DRIVE_TIMER_MAX,
+} from '../api/speak'
 
 interface Props {
   onBack: () => void
@@ -7,6 +10,12 @@ interface Props {
 
 export default function SettingsPage({ onBack }: Props) {
   const [selected, setSelected] = useState(getVoice())
+  const [driveTimer, setDriveTimerState] = useState(getDriveTimer())
+
+  function handleDriveTimer(seconds: number) {
+    setDriveTimer(seconds)
+    setDriveTimerState(seconds)
+  }
 
   function handleSelect(voiceId: string) {
     setSelected(voiceId)
@@ -71,6 +80,33 @@ export default function SettingsPage({ onBack }: Props) {
                     Preview
                   </button> */}
                 </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a24] border border-[#2e2e3e] rounded-2xl p-5 mt-4">
+          <h2 className="text-white font-semibold mb-1">Drive Mode Timer</h2>
+          <p className="text-gray-500 text-sm mb-5">
+            Seconds per character before auto-advancing.
+          </p>
+
+          <div className="flex gap-2">
+            {Array.from({ length: DRIVE_TIMER_MAX - DRIVE_TIMER_MIN + 1 }, (_, i) => {
+              const s = DRIVE_TIMER_MIN + i
+              const active = driveTimer === s
+              return (
+                <button
+                  key={s}
+                  onClick={() => handleDriveTimer(s)}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
+                    active
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-[#0f0f14] border border-[#2e2e3e] text-gray-400 hover:border-[#3e3e5e]'
+                  }`}
+                >
+                  {s}s
+                </button>
               )
             })}
           </div>
