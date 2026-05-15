@@ -41,55 +41,46 @@ export function speakKatakana(character: string): Promise<void> {
   })
 }
 
-// ── Drive Mode: WebAudio-based playback ─────────────────────────────────────
-// Uses the Web Audio API so playback works on iOS without a user gesture on
-// every individual play call. The AudioContext must be created/resumed once
-// inside a user-gesture handler (createDriveAudioContext), after which all
-// subsequent speakDrive() calls play freely.
+// ── Drive Mode audio ────────────────────────────────────────────────────────
+// iOS Safari only allows programmatic audio.play() on an element that was
+// explicitly touched inside a user-gesture handler. We create ONE Audio
+// element in the gesture handler (Start tap) and reuse it for every card.
+// Reusing the same element means the gesture unlock carries through the
+// entire session without needing a new gesture per card.
 
-let _driveCtx: AudioContext | null = null
-const _driveCache = new Map<string, AudioBuffer>()
+let _driveEl: HTMLAudioElement | null = null
 
 export function createDriveAudioContext() {
-  if (_driveCtx?.state === 'closed') _driveCtx = null
-  if (!_driveCtx) _driveCtx = new AudioContext()
-  // Play a silent 1-sample buffer — this is the standard trick to truly
-  // unlock the AudioContext on iOS Safari inside a user-gesture handler.
-  const silence = _driveCtx.createBuffer(1, 1, 22050)
-  const unlock = _driveCtx.createBufferSource()
-  unlock.buffer = silence
-  unlock.connect(_driveCtx.destination)
-  unlock.start(0)
-  _driveCtx.resume().catch(() => {})
+  _driveEl = new Audio()
+  // Calling play() here (even though it fails with no src) registers this
+  // element as gesture-activated on iOS for all future play() calls.
+  _driveEl.play().catch(() => {})
 }
 
 export async function preloadDriveAudio(characters: { character: string }[]): Promise<void> {
-  if (!_driveCtx) return
+  // Warm the service-worker / HTTP cache so playback is instant.
   await Promise.all(
-    characters.map(async c => {
-      const url = `/audio/katakana/${encodeURIComponent(toKatakana(c.character))}.mp3`
-      if (_driveCache.has(url)) return
-      try {
-        const resp = await fetch(url)
-        const ab = await resp.arrayBuffer()
-        const buf = await _driveCtx!.decodeAudioData(ab)
-        _driveCache.set(url, buf)
-      } catch { /* skip missing files */ }
-    }),
+    characters.map(c =>
+      fetch(`/audio/katakana/${encodeURIComponent(toKatakana(c.character))}.mp3`).catch(() => {}),
+    ),
   )
 }
 
 export function speakDrive(character: string): Promise<void> {
+  const el = _driveEl
+  if (!el) return Promise.resolve()
+  const url = `/audio/katakana/${encodeURIComponent(toKatakana(character))}.mp3`
   return new Promise(resolve => {
-    if (!_driveCtx) { resolve(); return }
-    const url = `/audio/katakana/${encodeURIComponent(toKatakana(character))}.mp3`
-    const buffer = _driveCache.get(url)
-    if (!buffer) { resolve(); return }
-    const src = _driveCtx.createBufferSource()
-    src.buffer = buffer
-    src.connect(_driveCtx.destination)
-    src.onended = () => resolve()
-    src.start()
+    const done = () => {
+      el.removeEventListener('ended', done)
+      el.removeEventListener('error', done)
+      resolve()
+    }
+    el.addEventListener('ended', done, { once: true })
+    el.addEventListener('error', done, { once: true })
+    el.src = url
+    el.load()
+    el.play().catch(done)
   })
 }
 
