@@ -32,6 +32,7 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   const [learnChar, setLearnChar] = useState<Character | null>(null)
   const [cardKey, setCardKey] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [showChar, setShowChar] = useState(false)
 
   const queueRef = useRef(queue)
   queueRef.current = queue
@@ -92,6 +93,14 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
   }, [cardKey, loaded]) // re-runs each new card and once when loading completes
+
+  // Delay showing character/romaji by 2s so a glance mid-card doesn't spoil the next one
+  useEffect(() => {
+    if (!loaded) return
+    setShowChar(false)
+    const t = setTimeout(() => setShowChar(true), 2000)
+    return () => clearTimeout(t)
+  }, [cardKey, loaded])
 
   // Learn phase: play audio immediately then every 10 seconds
   useEffect(() => {
@@ -173,8 +182,8 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
           ← exit
         </button>
 
-        {/* Character + romaji */}
-        {current && (
+        {/* Character + romaji — hidden for first 2s so a glance doesn't spoil the next card */}
+        {current && showChar && (
           <div className="flex flex-col items-center gap-6 pointer-events-none">
             <div className="text-[10rem] leading-none font-light text-white">
               {current.character}
