@@ -5,6 +5,7 @@ import MultipleChoiceCard from '../components/MultipleChoiceCard'
 import WritingCard from '../components/WritingCard'
 import DrivePage from './DrivePage'
 import { CHARACTERS } from '../data/characters'
+import { createDriveAudioContext } from '../api/speak'
 
 interface Props {
   deck: string
@@ -235,6 +236,7 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
               onClick={() => {
                 if (!quizType) return
                 if (quizType === 'drive') {
+                  createDriveAudioContext()  // must be called in user-gesture handler
                   setDriveChars(CHARACTERS.filter(c => selectedIds.has(c.id)))
                   setPhase('drive')
                   return

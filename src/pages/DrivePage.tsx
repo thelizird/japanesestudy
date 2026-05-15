@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Character } from '../api/client'
 import { api } from '../api/client'
-import { speakKatakana } from '../api/speak'
+import { preloadDriveAudio, speakDrive } from '../api/speak'
 import { CHARACTERS } from '../data/characters'
 
 interface Props {
@@ -31,6 +31,7 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   const [timeLeft, setTimeLeft] = useState(SESSION_MS)
   const [learnChar, setLearnChar] = useState<Character | null>(null)
   const [cardKey, setCardKey] = useState(0)
+  const [loaded, setLoaded] = useState(false)
 
   const queueRef = useRef(queue)
   queueRef.current = queue
@@ -44,6 +45,11 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     return () => { lock?.release() }
   }, [])
 
+  // Preload all audio buffers into the WebAudio cache
+  useEffect(() => {
+    preloadDriveAudio(initChars).then(() => setLoaded(true))
+  }, []) // eslint-disable-line
+
   // Introduce chars for SRS tracking in the background
   useEffect(() => {
     charSet.forEach(c => api.introduce(c.id))
@@ -55,7 +61,7 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     const q = queueRef.current
     if (q.length === 0) return
 
-    speakKatakana(q[0].character)
+    speakDrive(q[0].character)
 
     const deadline = Date.now() + SESSION_MS
     let raf: number
@@ -88,15 +94,15 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   // Learn phase: play audio immediately then every 10 seconds
   useEffect(() => {
     if (phase !== 'learn' || !learnChar) return
-    speakKatakana(learnChar.character)
-    const id = setInterval(() => speakKatakana(learnChar.character), LEARN_INTERVAL_MS)
+    speakDrive(learnChar.character)
+    const id = setInterval(() => speakDrive(learnChar.character), LEARN_INTERVAL_MS)
     return () => clearInterval(id)
   }, [phase, learnChar])
 
   function handleTap() {
     if (phase !== 'session' || queue.length === 0) return
     setPhase('replaying')
-    speakKatakana(queue[0].character).then(() => {
+    speakDrive(queue[0].character).then(() => {
       setQueue(prev => {
         const [first, ...rest] = prev
         return [...rest, first]
@@ -112,10 +118,11 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     setCardKey(k => k + 1)
   }
 
-  function handleLearn() {
+  async function handleLearn() {
     const charIds = new Set(charSet.map(c => c.id))
     const next = CHARACTERS.find(c => c.deck === deck && !charIds.has(c.id))
     if (!next) { handleReplay(); return }
+    await preloadDriveAudio([next])
     setLearnChar(next)
     setPhase('learn')
   }
@@ -128,6 +135,14 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     setLearnChar(null)
     setPhase('session')
     setCardKey(k => k + 1)
+  }
+
+  if (!loaded) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="text-gray-600 text-sm">Loading audio…</div>
+      </div>
+    )
   }
 
   const current = queue[0]

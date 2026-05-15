@@ -41,6 +41,53 @@ export function speakKatakana(character: string): Promise<void> {
   })
 }
 
+// ── Drive Mode: WebAudio-based playback ─────────────────────────────────────
+// Uses the Web Audio API so playback works on iOS without a user gesture on
+// every individual play call. The AudioContext must be created/resumed once
+// inside a user-gesture handler (createDriveAudioContext), after which all
+// subsequent speakDrive() calls play freely.
+
+let _driveCtx: AudioContext | null = null
+const _driveCache = new Map<string, AudioBuffer>()
+
+export function createDriveAudioContext() {
+  if (_driveCtx && _driveCtx.state !== 'closed') {
+    _driveCtx.resume().catch(() => {})
+    return
+  }
+  _driveCtx = new AudioContext()
+}
+
+export async function preloadDriveAudio(characters: { character: string }[]): Promise<void> {
+  if (!_driveCtx) return
+  await Promise.all(
+    characters.map(async c => {
+      const url = `/audio/katakana/${encodeURIComponent(toKatakana(c.character))}.mp3`
+      if (_driveCache.has(url)) return
+      try {
+        const resp = await fetch(url)
+        const ab = await resp.arrayBuffer()
+        const buf = await _driveCtx!.decodeAudioData(ab)
+        _driveCache.set(url, buf)
+      } catch { /* skip missing files */ }
+    }),
+  )
+}
+
+export function speakDrive(character: string): Promise<void> {
+  return new Promise(resolve => {
+    if (!_driveCtx) { resolve(); return }
+    const url = `/audio/katakana/${encodeURIComponent(toKatakana(character))}.mp3`
+    const buffer = _driveCache.get(url)
+    if (!buffer) { resolve(); return }
+    const src = _driveCtx.createBufferSource()
+    src.buffer = buffer
+    src.connect(_driveCtx.destination)
+    src.onended = () => resolve()
+    src.start()
+  })
+}
+
 export async function speak(text: string): Promise<void> {
   if (currentAudio) {
     currentAudio.pause()
