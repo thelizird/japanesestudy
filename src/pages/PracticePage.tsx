@@ -3,6 +3,8 @@ import { api } from '../api/client'
 import type { Character, UserProgress } from '../api/client'
 import MultipleChoiceCard from '../components/MultipleChoiceCard'
 import WritingCard from '../components/WritingCard'
+import DrivePage from './DrivePage'
+import { CHARACTERS } from '../data/characters'
 
 interface Props {
   deck: string
@@ -10,13 +12,14 @@ interface Props {
   onStudy: () => void
 }
 
-type QuizType = 'mc_to_romaji' | 'mc_to_kana' | 'writing'
-type Phase = 'pick' | 'select' | 'active' | 'done'
+type QuizType = 'mc_to_romaji' | 'mc_to_kana' | 'writing' | 'drive'
+type Phase = 'pick' | 'select' | 'active' | 'done' | 'drive'
 
 const QUIZ_OPTIONS: { type: QuizType; label: string; desc: string }[] = [
   { type: 'mc_to_romaji', label: 'Kana → Romaji', desc: 'See the character, pick the reading' },
   { type: 'mc_to_kana',   label: 'Romaji → Kana', desc: 'See the reading, pick the character' },
   { type: 'writing',      label: 'Drawing',        desc: 'Hear or see the reading, draw it' },
+  { type: 'drive',        label: 'Drive Mode',     desc: 'Hands-free audio drilling, tap if wrong' },
 ]
 
 function shuffle<T>(arr: T[]): T[] {
@@ -37,6 +40,9 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [loadingChars, setLoadingChars] = useState(false)
   const dragMode = useRef<'select' | 'deselect' | null>(null)
+
+  // drive mode state
+  const [driveChars, setDriveChars] = useState<Character[]>([])
 
   // session state
   const [queue, setQueue] = useState<UserProgress[]>([])
@@ -129,6 +135,14 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
 
   const current = queue[0]
 
+  if (phase === 'drive') return (
+    <DrivePage
+      deck={deck}
+      chars={driveChars}
+      onBack={() => setPhase('pick')}
+    />
+  )
+
   if (loadingChars || loadingSession) {
     return (
       <div className="min-h-screen bg-[#0f0f14] flex items-center justify-center">
@@ -218,7 +232,15 @@ export default function PracticePage({ deck, onBack, onStudy }: Props) {
           <div className="max-w-lg mx-auto">
             <button
               disabled={selectedIds.size === 0}
-              onClick={() => quizType && startSession(quizType, selectedIds)}
+              onClick={() => {
+                if (!quizType) return
+                if (quizType === 'drive') {
+                  setDriveChars(CHARACTERS.filter(c => selectedIds.has(c.id)))
+                  setPhase('drive')
+                  return
+                }
+                startSession(quizType, selectedIds)
+              }}
               className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-medium py-3 rounded-xl transition-colors"
             >
               {selectedIds.size === 0 ? 'Select characters to start' : `Start (${selectedIds.size})`}
