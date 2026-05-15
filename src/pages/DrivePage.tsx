@@ -130,8 +130,15 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   }
 
   async function handleLearn() {
+    const deckChars = CHARACTERS.filter(c => c.deck === deck)
     const charIds = new Set(charSet.map(c => c.id))
-    const next = CHARACTERS.find(c => c.deck === deck && !charIds.has(c.id))
+    // Find the highest deck-order index currently in the session
+    let lastIdx = -1
+    for (let i = 0; i < deckChars.length; i++) {
+      if (charIds.has(deckChars[i].id)) lastIdx = i
+    }
+    // Next to learn = first character after lastIdx not already in the session
+    const next = deckChars.slice(lastIdx + 1).find(c => !charIds.has(c.id))
     if (!next) { handleReplay(); return }
     await preloadDriveAudio([next])
     setLearnChar(next)
