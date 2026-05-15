@@ -56,8 +56,10 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   }, [charSet])
 
   // Card loop: play audio + run countdown timer
+  // Depends on `loaded` so the first card fires after the cache is ready,
+  // not on initial mount when the cache is still empty.
   useEffect(() => {
-    if (phaseRef.current !== 'session') return
+    if (!loaded || phaseRef.current !== 'session') return
     const q = queueRef.current
     if (q.length === 0) return
 
@@ -89,7 +91,7 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [cardKey]) // re-runs each new card
+  }, [cardKey, loaded]) // re-runs each new card and once when loading completes
 
   // Learn phase: play audio immediately then every 10 seconds
   useEffect(() => {

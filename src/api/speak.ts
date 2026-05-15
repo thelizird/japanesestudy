@@ -51,11 +51,16 @@ let _driveCtx: AudioContext | null = null
 const _driveCache = new Map<string, AudioBuffer>()
 
 export function createDriveAudioContext() {
-  if (_driveCtx && _driveCtx.state !== 'closed') {
-    _driveCtx.resume().catch(() => {})
-    return
-  }
-  _driveCtx = new AudioContext()
+  if (_driveCtx?.state === 'closed') _driveCtx = null
+  if (!_driveCtx) _driveCtx = new AudioContext()
+  // Play a silent 1-sample buffer — this is the standard trick to truly
+  // unlock the AudioContext on iOS Safari inside a user-gesture handler.
+  const silence = _driveCtx.createBuffer(1, 1, 22050)
+  const unlock = _driveCtx.createBufferSource()
+  unlock.buffer = silence
+  unlock.connect(_driveCtx.destination)
+  unlock.start(0)
+  _driveCtx.resume().catch(() => {})
 }
 
 export async function preloadDriveAudio(characters: { character: string }[]): Promise<void> {
