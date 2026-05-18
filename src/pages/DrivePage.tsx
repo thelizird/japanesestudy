@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Character } from '../api/client'
 import { api } from '../api/client'
 import { preloadDriveAudio, speakDrive, getDriveTimer } from '../api/speak'
@@ -24,12 +24,23 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
-  const [SESSION_MS] = useState(() => getDriveTimer() * 1000)
+  const BASE_MS = getDriveTimer() * 1000
+  const EXTRA_MS = 2000
+
   const [charSet, setCharSet] = useState<Character[]>(initChars)
   const [queue, setQueue] = useState<Character[]>(() => shuffle([...initChars]))
   const [phase, setPhase] = useState<Phase>('session')
-  const [timeLeft, setTimeLeft] = useState(SESSION_MS)
+  const [timeLeft, setTimeLeft] = useState(BASE_MS)
   const [learnChar, setLearnChar] = useState<Character | null>(null)
+
+  // Last 5 characters by curriculum order (display_order) get +2s; all get it if < 5 selected
+  const newerIds = useMemo(() => {
+    const sorted = [...charSet].sort((a, b) => a.display_order - b.display_order)
+    const count = Math.min(5, sorted.length)
+    return new Set(sorted.slice(sorted.length - count).map(c => c.id))
+  }, [charSet])
+  const newerIdsRef = useRef(newerIds)
+  newerIdsRef.current = newerIds
   const [cardKey, setCardKey] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [showChar, setShowChar] = useState(false)
@@ -66,7 +77,8 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
 
     speakDrive(q[0].character)
 
-    const deadline = Date.now() + SESSION_MS
+    const cardMs = BASE_MS + (newerIdsRef.current.has(q[0].id) ? EXTRA_MS : 0)
+    const deadline = Date.now() + cardMs
     let raf: number
 
     function tick() {
@@ -164,7 +176,10 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
   }
 
   const current = queue[0]
-  const timerPct = timeLeft / SESSION_MS
+  const currentCardMs = current
+    ? BASE_MS + (newerIds.has(current.id) ? EXTRA_MS : 0)
+    : BASE_MS
+  const timerPct = timeLeft / currentCardMs
 
   // ── Session / Replaying ──────────────────────────────────────────────────
   if (phase === 'session' || phase === 'replaying') {
