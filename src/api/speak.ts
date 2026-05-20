@@ -31,6 +31,20 @@ export function setDriveTimer(seconds: number) {
   localStorage.setItem(DRIVE_TIMER_KEY, String(seconds))
 }
 
+const DRIVE_WINDOW_KEY = 'drive_window'
+export const DRIVE_WINDOW_DEFAULT = 10
+export const DRIVE_WINDOW_MIN = 5
+export const DRIVE_WINDOW_MAX = 15
+
+export function getDriveWindow(): number {
+  const v = parseInt(localStorage.getItem(DRIVE_WINDOW_KEY) ?? '')
+  return isNaN(v) ? DRIVE_WINDOW_DEFAULT : Math.min(DRIVE_WINDOW_MAX, Math.max(DRIVE_WINDOW_MIN, v))
+}
+
+export function setDriveWindow(n: number) {
+  localStorage.setItem(DRIVE_WINDOW_KEY, String(n))
+}
+
 let currentAudio: HTMLAudioElement | null = null
 
 function toKatakana(text: string): string {

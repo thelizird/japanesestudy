@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Character } from '../api/client'
 import { api } from '../api/client'
-import { preloadDriveAudio, speakDrive, getDriveTimer } from '../api/speak'
+import { preloadDriveAudio, speakDrive, getDriveTimer, getDriveWindow } from '../api/speak'
 import { CHARACTERS } from '../data/characters'
 
 interface Props {
@@ -106,11 +106,14 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
     return () => cancelAnimationFrame(raf)
   }, [cardKey, loaded]) // re-runs each new card and once when loading completes
 
-  // Delay showing character/romaji by 2s so a glance mid-card doesn't spoil the next one
+  // Delay showing character/romaji until halfway through the card's duration (rounded up to nearest second)
   useEffect(() => {
     if (!loaded) return
     setShowChar(false)
-    const t = setTimeout(() => setShowChar(true), 2000)
+    const current = queueRef.current[0]
+    const cardMs = BASE_MS + (current && newerIdsRef.current.has(current.id) ? EXTRA_MS : 0)
+    const revealMs = Math.ceil(cardMs / 2000) * 1000
+    const t = setTimeout(() => setShowChar(true), revealMs)
     return () => clearTimeout(t)
   }, [cardKey, loaded])
 
@@ -159,7 +162,13 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
 
   function handleLearnConfirm() {
     if (!learnChar) return
-    const newChars = [...charSet, learnChar]
+    const window = getDriveWindow()
+    let newChars = [...charSet, learnChar]
+    if (newChars.length > window) {
+      const sorted = [...newChars].sort((a, b) => a.display_order - b.display_order)
+      const oldest = sorted[0]
+      newChars = newChars.filter(c => c.id !== oldest.id)
+    }
     setCharSet(newChars)
     setQueue(shuffle([...newChars]))
     setLearnChar(null)

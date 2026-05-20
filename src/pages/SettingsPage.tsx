@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   JP_VOICES, getVoice, setVoice,
   getDriveTimer, setDriveTimer, DRIVE_TIMER_MIN, DRIVE_TIMER_MAX,
+  getDriveWindow, setDriveWindow, DRIVE_WINDOW_MIN, DRIVE_WINDOW_MAX,
 } from '../api/speak'
 
 interface Props {
@@ -11,10 +12,16 @@ interface Props {
 export default function SettingsPage({ onBack }: Props) {
   const [selected, setSelected] = useState(getVoice())
   const [driveTimer, setDriveTimerState] = useState(getDriveTimer())
+  const [driveWindow, setDriveWindowState] = useState(getDriveWindow())
 
   function handleDriveTimer(seconds: number) {
     setDriveTimer(seconds)
     setDriveTimerState(seconds)
+  }
+
+  function handleDriveWindow(n: number) {
+    setDriveWindow(n)
+    setDriveWindowState(n)
   }
 
   function handleSelect(voiceId: string) {
@@ -106,6 +113,33 @@ export default function SettingsPage({ onBack }: Props) {
                   }`}
                 >
                   {s}s
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a24] border border-[#2e2e3e] rounded-2xl p-5 mt-4">
+          <h2 className="text-white font-semibold mb-1">Drive Mode Window</h2>
+          <p className="text-gray-500 text-sm mb-5">
+            Max characters in a drive session. Once reached, learning a new one drops the oldest.
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: DRIVE_WINDOW_MAX - DRIVE_WINDOW_MIN + 1 }, (_, i) => {
+              const n = DRIVE_WINDOW_MIN + i
+              const active = driveWindow === n
+              return (
+                <button
+                  key={n}
+                  onClick={() => handleDriveWindow(n)}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-colors ${
+                    active
+                      ? 'bg-violet-600 text-white'
+                      : 'bg-[#0f0f14] border border-[#2e2e3e] text-gray-400 hover:border-[#3e3e5e]'
+                  }`}
+                >
+                  {n}
                 </button>
               )
             })}

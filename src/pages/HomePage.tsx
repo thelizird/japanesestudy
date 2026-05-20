@@ -110,6 +110,8 @@ export default function HomePage({ onStudy, onReview, onPractice, onViewDeck, on
             )
           })}
         </div>
+
+        <p className="text-center text-gray-700 text-xs mt-10">v0.1.0</p>
       </div>
     </div>
   )
