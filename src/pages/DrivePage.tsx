@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Character } from '../api/client'
 import { api } from '../api/client'
-import { preloadDriveAudio, speakDrive, getDriveTimer, getDriveWindow } from '../api/speak'
+import { preloadDriveAudio, speakDrive, getDriveTimer, getDriveWindow, getDriveTapMode } from '../api/speak'
 import { CHARACTERS } from '../data/characters'
 
 interface Props {
@@ -127,6 +127,22 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
 
   function handleTap() {
     if (phase !== 'session' || queue.length === 0) return
+
+    // Skip mode: drop the current card and advance immediately, just like the
+    // timer expiring — no replay, the card won't reappear this session.
+    if (getDriveTapMode() === 'skip') {
+      const rest = queue.slice(1)
+      if (rest.length === 0) {
+        setPhase('end')
+      } else {
+        setQueue(rest)
+        setCardKey(k => k + 1)
+      }
+      return
+    }
+
+    // Wrong mode: replay the audio and requeue the card to the back so it
+    // comes around again later this session.
     setPhase('replaying')
     speakDrive(queue[0].character).then(() => {
       setQueue(prev => {
@@ -226,7 +242,7 @@ export default function DrivePage({ deck, chars: initChars, onBack }: Props) {
         )}
 
         <div className="absolute bottom-8 text-gray-700 text-sm pointer-events-none">
-          tap anywhere if wrong
+          {getDriveTapMode() === 'skip' ? 'tap anywhere to skip' : 'tap anywhere if wrong'}
         </div>
       </div>
     )

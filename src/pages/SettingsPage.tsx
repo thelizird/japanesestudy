@@ -3,7 +3,13 @@ import {
   JP_VOICES, getVoice, setVoice,
   getDriveTimer, setDriveTimer, DRIVE_TIMER_MIN, DRIVE_TIMER_MAX,
   getDriveWindow, setDriveWindow, DRIVE_WINDOW_MIN, DRIVE_WINDOW_MAX,
+  getDriveTapMode, setDriveTapMode, type DriveTapMode,
 } from '../api/speak'
+
+const DRIVE_TAP_OPTIONS: { mode: DriveTapMode; label: string; desc: string }[] = [
+  { mode: 'wrong', label: 'Mark wrong', desc: 'Tap repeats the card later this session.' },
+  { mode: 'skip',  label: 'Skip',       desc: 'Tap jumps to the next card right away.' },
+]
 
 interface Props {
   onBack: () => void
@@ -13,6 +19,7 @@ export default function SettingsPage({ onBack }: Props) {
   const [selected, setSelected] = useState(getVoice())
   const [driveTimer, setDriveTimerState] = useState(getDriveTimer())
   const [driveWindow, setDriveWindowState] = useState(getDriveWindow())
+  const [driveTapMode, setDriveTapModeState] = useState(getDriveTapMode())
 
   function handleDriveTimer(seconds: number) {
     setDriveTimer(seconds)
@@ -22,6 +29,11 @@ export default function SettingsPage({ onBack }: Props) {
   function handleDriveWindow(n: number) {
     setDriveWindow(n)
     setDriveWindowState(n)
+  }
+
+  function handleDriveTapMode(mode: DriveTapMode) {
+    setDriveTapMode(mode)
+    setDriveTapModeState(mode)
   }
 
   function handleSelect(voiceId: string) {
@@ -140,6 +152,35 @@ export default function SettingsPage({ onBack }: Props) {
                   }`}
                 >
                   {n}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a24] border border-[#2e2e3e] rounded-2xl p-5 mt-4">
+          <h2 className="text-white font-semibold mb-1">Drive Mode Tap</h2>
+          <p className="text-gray-500 text-sm mb-5">
+            What happens when you tap a card in Drive Mode.
+          </p>
+
+          <div className="flex gap-2">
+            {DRIVE_TAP_OPTIONS.map(opt => {
+              const active = driveTapMode === opt.mode
+              return (
+                <button
+                  key={opt.mode}
+                  onClick={() => handleDriveTapMode(opt.mode)}
+                  className={`flex-1 text-left rounded-xl p-4 border transition-colors ${
+                    active
+                      ? 'border-violet-500 bg-violet-600/10'
+                      : 'border-[#2e2e3e] bg-[#0f0f14] hover:border-[#3e3e5e]'
+                  }`}
+                >
+                  <div className={`font-semibold text-sm mb-1 ${active ? 'text-white' : 'text-gray-300'}`}>
+                    {opt.label}
+                  </div>
+                  <div className="text-gray-500 text-xs leading-snug">{opt.desc}</div>
                 </button>
               )
             })}

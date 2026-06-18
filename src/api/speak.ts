@@ -45,6 +45,18 @@ export function setDriveWindow(n: number) {
   localStorage.setItem(DRIVE_WINDOW_KEY, String(n))
 }
 
+const DRIVE_TAP_MODE_KEY = 'drive_tap_mode'
+export type DriveTapMode = 'wrong' | 'skip'
+export const DRIVE_TAP_MODE_DEFAULT: DriveTapMode = 'wrong'
+
+export function getDriveTapMode(): DriveTapMode {
+  return localStorage.getItem(DRIVE_TAP_MODE_KEY) === 'skip' ? 'skip' : 'wrong'
+}
+
+export function setDriveTapMode(mode: DriveTapMode) {
+  localStorage.setItem(DRIVE_TAP_MODE_KEY, mode)
+}
+
 let currentAudio: HTMLAudioElement | null = null
 
 function toKatakana(text: string): string {
